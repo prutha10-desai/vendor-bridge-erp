@@ -30,6 +30,8 @@ const EMPTY_VENDOR = {
   gstNumber: '',
   address: '',
   status: 'pending',
+  credentialEmail: '',
+  credentialPassword: '',
   contacts: [{ name: '', email: '', phone: '', designation: '' }],
 };
 
@@ -110,7 +112,12 @@ export default function VendorsPage() {
       if (editing) {
         await vendorsApi.update(editing._id, payload);
       } else {
-        await vendorsApi.create({ ...payload, status: form.status });
+        await vendorsApi.create({
+          ...payload,
+          status: form.status,
+          email: form.credentialEmail,
+          password: form.credentialPassword,
+        });
       }
       setModalOpen(false);
       fetchVendors();
@@ -352,43 +359,40 @@ export default function VendorsPage() {
         onClose={() => setModalOpen(false)}
         title={editing ? 'Edit vendor' : 'Register vendor'}
         size="lg"
+        scrollable
       >
-        <form onSubmit={handleSave} className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
+        <form onSubmit={handleSave} className="space-y-5">
+          <div className="space-y-4">
+            <p className="text-xs font-medium uppercase tracking-widest text-muted">Company details</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input
+                label="Company name"
+                value={form.companyName}
+                onChange={(e) => setForm({ ...form, companyName: e.target.value })}
+                required
+              />
+              <Input
+                label="Category"
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                required
+                placeholder="Industrial, IT, Logistics..."
+              />
+            </div>
             <Input
-              label="Company name"
-              value={form.companyName}
-              onChange={(e) => setForm({ ...form, companyName: e.target.value })}
+              label="GST number"
+              value={form.gstNumber}
+              onChange={(e) => setForm({ ...form, gstNumber: e.target.value })}
               required
             />
-            <Input
-              label="Category"
-              value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
+            <Textarea
+              label="Address"
+              value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
               required
-              placeholder="Industrial, IT, Logistics..."
             />
           </div>
-          <Input
-            label="GST number"
-            value={form.gstNumber}
-            onChange={(e) => setForm({ ...form, gstNumber: e.target.value })}
-            required
-          />
-          <Textarea
-            label="Address"
-            value={form.address}
-            onChange={(e) => setForm({ ...form, address: e.target.value })}
-            required
-          />
-          {!editing && (
-            <Select
-              label="Status"
-              value={form.status}
-              onChange={(e) => setForm({ ...form, status: e.target.value })}
-              options={VENDOR_STATUSES}
-            />
-          )}
+
           <div className="rounded-xl border border-border bg-canvas/50 p-4 space-y-3">
             <p className="text-xs font-medium uppercase tracking-widest text-muted">Primary contact</p>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -415,8 +419,41 @@ export default function VendorsPage() {
               />
             </div>
           </div>
+
+          {!editing && (
+            <div className="rounded-xl border border-border bg-canvas/50 p-4 space-y-3">
+              <p className="text-xs font-medium uppercase tracking-widest text-muted">Login credentials</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input
+                  label="Email"
+                  type="email"
+                  value={form.credentialEmail}
+                  onChange={(e) => setForm({ ...form, credentialEmail: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Password"
+                  type="password"
+                  value={form.credentialPassword}
+                  onChange={(e) => setForm({ ...form, credentialPassword: e.target.value })}
+                  required
+                  minLength={6}
+                />
+              </div>
+            </div>
+          )}
+
+          {!editing && (
+            <Select
+              label="Status"
+              value={form.status}
+              onChange={(e) => setForm({ ...form, status: e.target.value })}
+              options={VENDOR_STATUSES}
+            />
+          )}
+
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex justify-end gap-3 border-t border-border pt-4">
             <Button variant="secondary" type="button" onClick={() => setModalOpen(false)}>
               Cancel
             </Button>

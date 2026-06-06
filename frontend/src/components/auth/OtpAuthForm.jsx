@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import OtpInput from '../ui/OtpInput';
-import RoleSelect from './RoleSelect';
 import { authApi } from '../../api/auth';
 import { useAuthStore } from '../../store/authStore';
 
@@ -18,7 +17,6 @@ export default function OtpAuthForm({ mode = 'login' }) {
   const [form, setForm] = useState({
     email: '',
     name: '',
-    role: 'procurement_officer',
     otp: '',
   });
 
@@ -39,7 +37,6 @@ export default function OtpAuthForm({ mode = 'login' }) {
       };
       if (mode === 'signup') {
         payload.name = form.name;
-        payload.role = form.role;
       }
 
       await authApi.sendOtp(payload);
@@ -79,19 +76,13 @@ export default function OtpAuthForm({ mode = 'login' }) {
             className="space-y-5"
           >
             {mode === 'signup' && (
-              <>
-                <Input
-                  label="Full name"
-                  placeholder="John Doe"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  required
-                />
-                <RoleSelect
-                  value={form.role}
-                  onChange={(role) => setForm({ ...form, role })}
-                />
-              </>
+              <Input
+                label="Full name"
+                placeholder="John Doe"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                required
+              />
             )}
 
             <Input

@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
-import RoleSelect from './RoleSelect';
+import Textarea from '../ui/Textarea';
 import { authApi } from '../../api/auth';
 import { useAuthStore } from '../../store/authStore';
 
@@ -16,7 +16,12 @@ export default function EmailAuthForm({ mode = 'login' }) {
     name: '',
     email: '',
     password: '',
-    role: 'procurement_officer',
+    companyName: '',
+    category: '',
+    gstNumber: '',
+    address: '',
+    contactPhone: '',
+    contactDesignation: '',
   });
 
   const handleSubmit = async (e) => {
@@ -25,11 +30,32 @@ export default function EmailAuthForm({ mode = 'login' }) {
     setLoading(true);
 
     try {
-      const { data } =
-        mode === 'login'
-          ? await authApi.login({ email: form.email, password: form.password })
-          : await authApi.signup(form);
+      if (mode === 'login') {
+        const { data } = await authApi.login({ email: form.email, password: form.password });
+        setSession(data, data.token);
+        navigate('/dashboard');
+        return;
+      }
 
+      const payload = {
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        companyName: form.companyName,
+        category: form.category,
+        gstNumber: form.gstNumber,
+        address: form.address,
+        contacts: [
+          {
+            name: form.name,
+            email: form.email,
+            phone: form.contactPhone,
+            designation: form.contactDesignation,
+          },
+        ],
+      };
+
+      const { data } = await authApi.signup(payload);
       setSession(data, data.token);
       navigate('/dashboard');
     } catch (err) {
@@ -47,13 +73,54 @@ export default function EmailAuthForm({ mode = 'login' }) {
       className="space-y-5"
     >
       {mode === 'signup' && (
-        <Input
-          label="Full name"
-          placeholder="John Doe"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          required
-        />
+        <>
+          <Input
+            label="Full name"
+            placeholder="John Doe"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            required
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label="Company name"
+              value={form.companyName}
+              onChange={(e) => setForm({ ...form, companyName: e.target.value })}
+              required
+            />
+            <Input
+              label="Category"
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              required
+              placeholder="Industrial, IT, Logistics..."
+            />
+          </div>
+          <Input
+            label="GST number"
+            value={form.gstNumber}
+            onChange={(e) => setForm({ ...form, gstNumber: e.target.value })}
+            required
+          />
+          <Textarea
+            label="Address"
+            value={form.address}
+            onChange={(e) => setForm({ ...form, address: e.target.value })}
+            required
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label="Phone"
+              value={form.contactPhone}
+              onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
+            />
+            <Input
+              label="Designation"
+              value={form.contactDesignation}
+              onChange={(e) => setForm({ ...form, contactDesignation: e.target.value })}
+            />
+          </div>
+        </>
       )}
 
       <Input
@@ -74,10 +141,6 @@ export default function EmailAuthForm({ mode = 'login' }) {
         required
         minLength={6}
       />
-
-      {mode === 'signup' && (
-        <RoleSelect value={form.role} onChange={(role) => setForm({ ...form, role })} />
-      )}
 
       {mode === 'login' && (
         <div className="flex justify-end">

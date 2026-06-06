@@ -4,10 +4,20 @@ const { createAuditLog } = require('../utils/auditHelper');
 
 const createVendor = async (req, res) => {
   try {
-    const { companyName, category, gstNumber, address, contacts, status } = req.body;
+    const { companyName, category, gstNumber, address, contacts, status, email, password } = req.body;
 
     if (!companyName || !category || !gstNumber || !address) {
       return res.status(400).json({ message: 'Company name, category, GST number, and address are required' });
+    }
+
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Vendor email and password are required' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email already registered' });
     }
 
     const vendor = await Vendor.create({
@@ -18,6 +28,16 @@ const createVendor = async (req, res) => {
       contacts: contacts || [],
       status: status || 'pending',
       createdBy: req.user._id,
+    });
+
+    const contactName = contacts?.[0]?.name || companyName;
+    await User.create({
+      name: contactName,
+      email: normalizedEmail,
+      password,
+      role: 'vendor',
+      vendorId: vendor._id,
+      authProvider: 'local',
     });
 
     await createAuditLog({

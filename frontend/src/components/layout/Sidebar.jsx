@@ -6,11 +6,15 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  FileText,
+  CheckCircle,
+  ShoppingCart,
+  Receipt,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { NAV_ITEMS, canAccess, ROLE_LABELS } from '../../utils/roles';
 
-const ICONS = { LayoutDashboard, Building2, Users };
+const ICONS = { LayoutDashboard, Building2, Users, FileText, CheckCircle, ShoppingCart, Receipt };
 
 export default function Sidebar({ collapsed, onToggle }) {
   const { user, logout } = useAuthStore();

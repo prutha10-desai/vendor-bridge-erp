@@ -27,6 +27,34 @@ export const NAV_ITEMS = [
     icon: 'Users',
     roles: ['admin'],
   },
+  {
+    id: 'rfqs',
+    label: 'RFQs',
+    path: '/rfqs',
+    icon: 'FileText',
+    roles: ['admin', 'procurement_officer', 'manager', 'vendor'],
+  },
+  {
+    id: 'approvals',
+    label: 'Approvals',
+    path: '/approvals',
+    icon: 'CheckCircle',
+    roles: ['manager'],
+  },
+  {
+    id: 'purchase-orders',
+    label: 'Purchase Orders',
+    path: '/purchase-orders',
+    icon: 'ShoppingCart',
+    roles: ['admin', 'procurement_officer', 'manager', 'vendor'],
+  },
+  {
+    id: 'invoices',
+    label: 'Invoices',
+    path: '/invoices',
+    icon: 'Receipt',
+    roles: ['admin', 'procurement_officer', 'manager', 'vendor'],
+  },
 ];
 
 export const canAccess = (role, navItem) => navItem.roles.includes(role);

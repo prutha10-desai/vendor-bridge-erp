@@ -1,11 +1,13 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
+const Vendor = require('../models/Vendor');
 const Otp = require('../models/Otp');
 const { createAuditLog } = require('../utils/auditHelper');
 const { sendPasswordResetEmail, sendOtpEmail } = require('../utils/emailService');
 const { generateOtp, getOtpExpiry } = require('../utils/otpService');
 const { verifyGoogleToken } = require('../utils/googleAuth');
+const { getAllowedUser } = require('../config/allowedUsers');
 
 const generateJWT = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
@@ -23,25 +25,74 @@ const formatAuthResponse = (user) => ({
 
 const signup = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const {
+      name,
+      email,
+      password,
+      companyName,
+      category,
+      gstNumber,
+      address,
+      contacts,
+    } = req.body;
 
-    if (!name || !email || !password || !role) {
-      return res.status(400).json({ message: 'Name, email, password, and role are required' });
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'Name, email, and password are required' });
     }
 
-    const existingUser = await User.findOne({ email });
+    const normalizedEmail = email.toLowerCase().trim();
+    const allowed = getAllowedUser(normalizedEmail);
+    const role = allowed ? allowed.role : 'vendor';
+
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(400).json({ message: 'Email already registered' });
     }
 
-    const user = await User.create({ name, email, password, role, authProvider: 'local' });
+    let vendorId = null;
+
+    if (role === 'vendor') {
+      if (!companyName || !category || !gstNumber || !address) {
+        return res.status(400).json({
+          message: 'Company name, category, GST number, and address are required for vendor registration',
+        });
+      }
+
+      const vendor = await Vendor.create({
+        companyName,
+        category,
+        gstNumber,
+        address,
+        contacts: contacts || [{ name, email: normalizedEmail, phone: '', designation: '' }],
+        status: 'pending',
+      });
+
+      vendorId = vendor._id;
+
+      await createAuditLog({
+        action: 'vendor_created',
+        entityType: 'Vendor',
+        entityId: vendor._id,
+        performedBy: null,
+        description: `Vendor ${companyName} self-registered`,
+      });
+    }
+
+    const user = await User.create({
+      name,
+      email: normalizedEmail,
+      password,
+      role,
+      vendorId,
+      authProvider: 'local',
+    });
 
     await createAuditLog({
       action: 'user_signup',
       entityType: 'User',
       entityId: user._id,
       performedBy: user._id,
-      description: `User ${email} signed up with role ${role}`,
+      description: `User ${normalizedEmail} signed up with role ${role}`,
     });
 
     res.status(201).json(formatAuthResponse(user));
@@ -91,7 +142,7 @@ const login = async (req, res) => {
 
 const googleAuth = async (req, res) => {
   try {
-    const { idToken, role } = req.body;
+    const { idToken } = req.body;
 
     if (!idToken) {
       return res.status(400).json({ message: 'Google ID token is required' });
@@ -104,10 +155,11 @@ const googleAuth = async (req, res) => {
       return res.status(400).json({ message: 'Google account email not available' });
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
     let user = await User.findOne({ googleId });
 
     if (!user) {
-      user = await User.findOne({ email });
+      user = await User.findOne({ email: normalizedEmail });
 
       if (user) {
         if (user.googleId && user.googleId !== googleId) {
@@ -119,13 +171,12 @@ const googleAuth = async (req, res) => {
         }
         await user.save();
       } else {
-        if (!role) {
-          return res.status(400).json({ message: 'Role is required for Google signup' });
-        }
+        const allowed = getAllowedUser(normalizedEmail);
+        const role = allowed ? allowed.role : 'vendor';
 
         user = await User.create({
           name: name || email.split('@')[0],
-          email,
+          email: normalizedEmail,
           googleId,
           role,
           authProvider: 'google',
@@ -136,7 +187,7 @@ const googleAuth = async (req, res) => {
           entityType: 'User',
           entityId: user._id,
           performedBy: user._id,
-          description: `User ${email} signed up via Google with role ${role}`,
+          description: `User ${normalizedEmail} signed up via Google with role ${role}`,
         });
       }
     }
@@ -161,7 +212,7 @@ const googleAuth = async (req, res) => {
 
 const sendOtp = async (req, res) => {
   try {
-    const { email, purpose, name, role } = req.body;
+    const { email, purpose, name } = req.body;
 
     if (!email || !purpose) {
       return res.status(400).json({ message: 'Email and purpose are required' });
@@ -175,9 +226,10 @@ const sendOtp = async (req, res) => {
     const existingUser = await User.findOne({ email: normalizedEmail });
 
     if (purpose === 'signup') {
-      if (!name || !role) {
-        return res.status(400).json({ message: 'Name and role are required for OTP signup' });
+      if (!name) {
+        return res.status(400).json({ message: 'Name is required for OTP signup' });
       }
+
       if (existingUser) {
         return res.status(400).json({ message: 'Email already registered' });
       }
@@ -195,13 +247,18 @@ const sendOtp = async (req, res) => {
     const otp = generateOtp();
     const expiresAt = getOtpExpiry();
 
+    const signupRole =
+      purpose === 'signup'
+        ? (getAllowedUser(normalizedEmail)?.role || 'vendor')
+        : null;
+
     await Otp.findOneAndDelete({ email: normalizedEmail, purpose });
     await Otp.create({
       email: normalizedEmail,
       otp,
       purpose,
       name: purpose === 'signup' ? name : null,
-      role: purpose === 'signup' ? role : null,
+      role: signupRole,
       expiresAt,
     });
 

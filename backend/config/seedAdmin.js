@@ -1,37 +1,28 @@
 const User = require('../models/User');
+const { ALLOWED_USERS } = require('./allowedUsers');
 
 const seedAdmin = async () => {
-  const email = process.env.ADMIN_EMAIL;
-  const password = process.env.ADMIN_PASSWORD;
-  const name = process.env.ADMIN_NAME || 'Admin';
+  for (const [email, config] of Object.entries(ALLOWED_USERS)) {
+    const normalizedEmail = email.toLowerCase();
+    let user = await User.findOne({ email: normalizedEmail });
 
-  if (!email || !password) {
-    console.log('Admin seed skipped: ADMIN_EMAIL or ADMIN_PASSWORD not set');
-    return;
-  }
-
-  const existing = await User.findOne({ email: email.toLowerCase() });
-
-  if (existing) {
-    if (existing.role !== 'admin') {
-      existing.role = 'admin';
-      await existing.save();
-      console.log(`Admin seed: updated existing user ${email} to admin role`);
+    if (user) {
+      user.role = config.role;
+      user.name = config.name;
+      user.password = config.password;
+      await user.save();
+      console.log(`Seed: updated user ${normalizedEmail} (${config.role})`);
     } else {
-      console.log(`Admin seed: admin already exists (${email})`);
+      await User.create({
+        name: config.name,
+        email: normalizedEmail,
+        password: config.password,
+        role: config.role,
+        authProvider: 'local',
+      });
+      console.log(`Seed: created user ${normalizedEmail} (${config.role})`);
     }
-    return;
   }
-
-  await User.create({
-    name,
-    email: email.toLowerCase(),
-    password,
-    role: 'admin',
-    authProvider: 'local',
-  });
-
-  console.log(`Admin seed: created admin account (${email})`);
 };
 
 module.exports = seedAdmin;
