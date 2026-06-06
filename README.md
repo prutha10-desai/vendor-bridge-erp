@@ -18,12 +18,6 @@ VendorBridge ERP is a procurement and vendor management suite designed for hacka
 - AI procurement assistant mock logic
 - Role-based access for Admin, Procurement Officer, Vendor, and Manager
 
-## Structure
-
-- `client`: React frontend
-- `server`: Express API and Prisma schema
-- `shared`: shared domain types
-
 ## Demo Notes
 
 The application ships with seeded sample data and mock API endpoints so it can be demoed quickly even before connecting a real database.
